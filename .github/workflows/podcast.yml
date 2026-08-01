@@ -58,30 +58,6 @@ jobs:
           git add .
           git commit -m 'add new heatmap' || echo "nothing to commit"
           git push || echo "nothing to push"
-      - name: udpate heatmap
+      - name: udpate heatmap 
         run: |
             update_heatmap
-      - name: debug episode database (temporary)
-        if: always()
-        run: |
-          python3 -c "
-import os
-from podcast2notion.notion_helper import NotionHelper
-nh = NotionHelper()
-ep = nh.episode_database_id
-print(f'EPISODE_DATABASE_ID={ep}')
-r = nh.client.databases.retrieve(database_id=ep)
-print('properties:', list(r.get('properties', {}).keys()))
-# 查 2025 年有日期的 episode
-resp = nh.client.databases.query(
-    database_id=ep,
-    filter={'property':'日期','date':{'on_or_after':'2025-01-01'}},
-    page_size=5
-)
-print('2025-or-later count (page 1):', len(resp['results']), 'has_more:', resp.get('has_more'))
-for i, p in enumerate(resp['results']):
-    props = p.get('properties', {})
-    date_prop = props.get('日期', {}).get('date')
-    dur_prop = props.get('时长', {})
-    print(f'  [{i}] 日期={date_prop}, 时长={dur_prop}')
-"
