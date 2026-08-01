@@ -95,7 +95,6 @@ class NotionHelper:
                 import requests as _rq
                 token = os.getenv("NOTION_TOKEN", "").strip()
                 db_id = self.episode_database_id
-                # 试新版 API（data_sources 字段）
                 r1 = _rq.get(
                     f"https://api.notion.com/v1/databases/{db_id}",
                     headers={
@@ -104,29 +103,14 @@ class NotionHelper:
                     },
                     timeout=15,
                 )
-                print(f"DEBUG: databases retrieve http {r1.status_code}")
                 if r1.ok:
                     body = r1.json()
-                    print(f"DEBUG: db body keys = {list(body.keys())}")
                     ds_list = body.get("data_sources") or []
-                    print(f"DEBUG: data_sources field = {ds_list[:2] if ds_list else 'EMPTY'}")
-                # 同时试着用 database_id 直接打 data_sources/{id}/query
-                r2 = _rq.post(
-                    f"https://api.notion.com/v1/data_sources/{db_id}/query",
-                    headers={
-                        "Authorization": f"Bearer {token}",
-                        "Notion-Version": "2026-03-11",
-                        "Content-Type": "application/json",
-                    },
-                    json={"page_size": 3, "filter": {"property": "日期", "date": {"on_or_after": "2026-01-01"}}},
-                    timeout=15,
-                )
-                print(f"DEBUG: data_sources/{db_id[:8]}/query http {r2.status_code}")
-                if r2.ok:
-                    body2 = r2.json()
-                    print(f"DEBUG: data_sources query results count = {len(body2.get('results', []))}, has_more = {body2.get('has_more')}")
-                else:
-                    print(f"DEBUG: data_sources query error = {r2.text[:200]}")
+                    if ds_list:
+                        ds_id = ds_list[0].get("id") or ds_list[0].get("data_source_id")
+                        if ds_id:
+                            self.write_database_id(ds_id, "EPISODE_DATA_SOURCE_ID")
+                            print(f"EPISODE_DATA_SOURCE_ID={ds_id}")
             except Exception as e:
                 print(f"DEBUG: failed to resolve data source id: {e}")
             # 可选 debug：设 DEBUG_HEATMAP=1 时打印 episode schema 和样本
