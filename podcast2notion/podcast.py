@@ -15,14 +15,24 @@ from podcast2notion.config import (
     TAG_ICON_URL,
     TZ,
 )
-from utils import get_icon
+from podcast2notion.utils import get_icon
 
 
 headers = {
     "host": "api.xiaoyuzhoufm.com",
     "applicationid": "app.podcast.cosmos",
     "x-jike-refresh-token": os.getenv("REFRESH_TOKEN").strip(),
+    "os":"android",
+    "os-version":"32",
+    "app-version":"2.80.4",
+    "app-buildno":"1175",
+    "user-agent":"okhttp/4.12.0",
     "x-jike-device-id": "5070e349-ba04-4c7b-a32e-13eb0fed01e7",
+    "timezone": "Asia/Shanghai",
+    "market": "update",
+    "manufacturer": "Xiaomi",
+    "model": "Redmi Note 7 Pro",
+    "resolution": "1080x2216",
 }
 
 tongyi_headers = {
@@ -261,7 +271,12 @@ def get_monthly_wrapped(year, month, id):
 def get_month_from_notion():
     filter = {
         "and": [
-            {"property": "收听时长", "number": {"equals": 0}},
+            {
+                "or":[
+                        {"property": "收听时长", "number": {"equals": 0}},
+                        {"property": "收听时长", "number": {"is_empty": True}},
+                    ]
+            },
             {
                 "property": "日期",
                 "date": {"before": pendulum.now(tz=TZ).replace(day=1).to_date_string()},
@@ -328,7 +343,7 @@ def insert_episode(episodes, d,dir_dict):
                 episode["日期"] = old_episode.get("日期")
             # 如果语音转文字状态不为Done，并且通义链接为空，则提交转写
             if old_episode.get("语音转文字状态")!= "Done" and old_episode.get("通义链接") is None:
-                episode["通义链接"] = getTongYiUrl(dir_name,episode.get("标题"),episode.get("音频"))
+                episode["通义链接"] = getTongYiUrl(dir_dict,dir_name,episode.get("标题"),episode.get("音频"))
             # 如果通义链接不为空，则赋值
             elif old_episode.get("通义链接") is not None:
                 episode["通义链接"] = old_episode.get("通义链接")
