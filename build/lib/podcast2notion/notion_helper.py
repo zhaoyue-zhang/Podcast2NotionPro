@@ -131,8 +131,17 @@ class NotionHelper:
                     child.get("id")
                 )
             elif child["type"] == "embed" and child.get("embed").get("url"):
-                if child.get("embed").get("url").startswith("https://heatmap.malinkang.com/"):
+                url = child.get("embed").get("url") or ""
+                if url.startswith("https://heatmap.malinkang.com/") or url.startswith(
+                    "https://raw.githubusercontent.com/"
+                ):
                     self.heatmap_block_id = child.get("id")
+            elif child["type"] == "image" and child.get("image").get("external", {}).get("url"):
+                url = child.get("image").get("external", {}).get("url") or ""
+                if url.startswith("https://raw.githubusercontent.com/"):
+                    # 兜底：image block 也认 raw URL，避免 embed→image 切换时找不到
+                    if not self.heatmap_block_id:
+                        self.heatmap_block_id = child.get("id")
             # 如果子块有子块，递归调用函数
             if "has_children" in child and child["has_children"]:
                 self.search_database(child["id"])
