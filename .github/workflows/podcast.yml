@@ -36,7 +36,9 @@ jobs:
         run: |
           podcast
       - name: Set default year if not provided
-        run: echo "YEAR=$(date +"%Y")" >> $GITHUB_ENV
+        # 默认上一年（since 用户听过播客的 playedAt 多数在历史年份；
+        # 跨年后才会切到当前年，避免空热力图）
+        run: echo "YEAR=$(date -u -d 'last year' +"%Y")" >> $GITHUB_ENV
         if: env.YEAR == ''
       - name: notion heatmap
         run: |
