@@ -88,6 +88,21 @@ class NotionHelper:
             # 同时暴露 episode_database_id，供 github_heatmap 用
             self.write_database_id(self.episode_database_id, "EPISODE_DATABASE_ID")
             print(f"EPISODE_DATABASE_ID={self.episode_database_id}")
+            # Notion 2025-09 API 改版：databases 和 data_sources 分离。
+            # github_heatmap 2.3.0 用 /v1/data_sources/{id}/query，需要 data_source_id。
+            # 从 database.retrieve 里拿第一个 data source id。
+            try:
+                meta = self.client.databases.retrieve(database_id=self.episode_database_id)
+                print(f"DEBUG: database.retrieve keys = {list(meta.keys())}")
+                ds_list = meta.get("data_sources") or []
+                print(f"DEBUG: data_sources = {ds_list[:1] if ds_list else 'EMPTY'}")
+                if ds_list:
+                    ds_id = ds_list[0].get("id") or ds_list[0].get("data_source_id")
+                    if ds_id:
+                        self.write_database_id(ds_id, "EPISODE_DATA_SOURCE_ID")
+                        print(f"EPISODE_DATA_SOURCE_ID={ds_id}")
+            except Exception as e:
+                print(f"DEBUG: failed to resolve data source id: {e}")
             # 可选 debug：设 DEBUG_HEATMAP=1 时打印 episode schema 和样本
             if os.getenv("DEBUG_HEATMAP") == "1":
                 try:
