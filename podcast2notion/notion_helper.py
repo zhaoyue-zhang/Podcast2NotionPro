@@ -80,11 +80,14 @@ class NotionHelper:
             self.property_dict.get("全部")
         )
         if self.day_database_id:
-            self.write_database_id(self.day_database_id)
+            self.write_database_id(self.day_database_id, "DAY_DATABASE_ID")
         if self.podcast_database_id:
             self.update_database(self.podcast_database_id)
         if self.episode_database_id:
             self.update_database(self.episode_database_id)
+            # 同时暴露 episode_database_id，供 github_heatmap 用
+            self.write_database_id(self.episode_database_id, "EPISODE_DATABASE_ID")
+            print(f"EPISODE_DATABASE_ID={self.episode_database_id}")
     @retry(stop_max_attempt_number=3, wait_fixed=5000)
     def update_database(self,database_id):
         """更新数据库"""
@@ -102,11 +105,11 @@ class NotionHelper:
     def get_relation_database_id(self, property):
         return property.get("relation").get("database_id")
 
-    def write_database_id(self, database_id):
+    def write_database_id(self, database_id, env_name="DATABASE_ID"):
         env_file = os.getenv('GITHUB_ENV')
         # 将值写入环境文件
         with open(env_file, "a") as file:
-            file.write(f"DATABASE_ID={database_id}\n")
+            file.write(f"{env_name}={database_id}\n")
     def extract_page_id(self, notion_url):
         # 正则表达式匹配 32 个字符的 Notion page_id
         match = re.search(
