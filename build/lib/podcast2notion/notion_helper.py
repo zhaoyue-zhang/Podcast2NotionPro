@@ -88,28 +88,26 @@ class NotionHelper:
             # 同时暴露 episode_database_id，供 github_heatmap 用
             self.write_database_id(self.episode_database_id, "EPISODE_DATABASE_ID")
             print(f"EPISODE_DATABASE_ID={self.episode_database_id}")
-            # DEBUG: dump schema + sample
-            try:
-                meta = self.client.databases.retrieve(database_id=self.episode_database_id)
-                props = meta.get("properties", {})
-                print(f"DEBUG: episode props = {list(props.keys())}")
-                # query 2025
-                resp = self.client.databases.query(
-                    database_id=self.episode_database_id,
-                    filter={"property": "日期", "date": {"on_or_after": "2025-01-01"}},
-                    page_size=3,
-                )
-                results = resp.get("results", [])
-                print(f"DEBUG: 2025+ record count (page1) = {len(results)}, has_more={resp.get('has_more')}")
-                for i, p in enumerate(results):
-                    pp = p.get("properties", {})
-                    dt = pp.get("日期", {}).get("date")
-                    dur = pp.get("时长", {})
-                    ts = pp.get("时间戳", {})
-                    prog = pp.get("收听进度", {})
-                    print(f"DEBUG [{i}]: 日期={dt}, 时长={dur.get('number')}, 时间戳={ts.get('number')}, 收听进度={prog.get('number')}")
-            except Exception as e:
-                print(f"DEBUG error: {e}")
+            # 可选 debug：设 DEBUG_HEATMAP=1 时打印 episode schema 和样本
+            if os.getenv("DEBUG_HEATMAP") == "1":
+                try:
+                    meta = self.client.databases.retrieve(database_id=self.episode_database_id)
+                    props = meta.get("properties", {})
+                    print(f"DEBUG: episode props = {list(props.keys())}")
+                    resp = self.client.databases.query(
+                        database_id=self.episode_database_id,
+                        filter={"property": "日期", "date": {"on_or_after": "2025-01-01"}},
+                        page_size=3,
+                    )
+                    results = resp.get("results", [])
+                    print(f"DEBUG: 2025+ count (page1) = {len(results)}, has_more={resp.get('has_more')}")
+                    for i, p in enumerate(results):
+                        pp = p.get("properties", {})
+                        dt = pp.get("日期", {}).get("date")
+                        dur = pp.get("时长", {})
+                        print(f"DEBUG [{i}]: 日期={dt}, 时长={dur.get('number')}")
+                except Exception as e:
+                    print(f"DEBUG error: {e}")
     @retry(stop_max_attempt_number=3, wait_fixed=5000)
     def update_database(self,database_id):
         """更新数据库"""
