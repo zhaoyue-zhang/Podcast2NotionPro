@@ -85,18 +85,18 @@ class NotionHelper:
             self.update_database(self.podcast_database_id)
         if self.episode_database_id:
             self.update_database(self.episode_database_id)
-            # 同时暴露 episode_database_id，供 github_heatmap 用
+            # 暴露 episode_database_id（兼容老 workflow 用法）
             self.write_database_id(self.episode_database_id, "EPISODE_DATABASE_ID")
             print(f"EPISODE_DATABASE_ID={self.episode_database_id}")
             # Notion 2025-09 API 改版：databases 和 data_sources 分离。
-            # github_heatmap 2.3.0 用 /v1/data_sources/{id}/query，需要 data_source_id。
-            # 用 requests 直接打 HTTP，避免 SDK 旧版字段缺失。
+            # github_heatmap 2.3.0 用 /v1/data_sources/{id}/query，需要 data_source_id
+            # （database_id 打过去返回 404，loader 静默吞掉，导致热力图全空）。
+            # 用 Notion 2026-03-11 API retrieve database，从 data_sources[0] 拿 id。
             try:
                 import requests as _rq
                 token = os.getenv("NOTION_TOKEN", "").strip()
-                db_id = self.episode_database_id
                 r1 = _rq.get(
-                    f"https://api.notion.com/v1/databases/{db_id}",
+                    f"https://api.notion.com/v1/databases/{self.episode_database_id}",
                     headers={
                         "Authorization": f"Bearer {token}",
                         "Notion-Version": "2026-03-11",
@@ -104,35 +104,14 @@ class NotionHelper:
                     timeout=15,
                 )
                 if r1.ok:
-                    body = r1.json()
-                    ds_list = body.get("data_sources") or []
+                    ds_list = r1.json().get("data_sources") or []
                     if ds_list:
                         ds_id = ds_list[0].get("id") or ds_list[0].get("data_source_id")
                         if ds_id:
                             self.write_database_id(ds_id, "EPISODE_DATA_SOURCE_ID")
                             print(f"EPISODE_DATA_SOURCE_ID={ds_id}")
             except Exception as e:
-                print(f"DEBUG: failed to resolve data source id: {e}")
-            # 可选 debug：设 DEBUG_HEATMAP=1 时打印 episode schema 和样本
-            if os.getenv("DEBUG_HEATMAP") == "1":
-                try:
-                    meta = self.client.databases.retrieve(database_id=self.episode_database_id)
-                    props = meta.get("properties", {})
-                    print(f"DEBUG: episode props = {list(props.keys())}")
-                    resp = self.client.databases.query(
-                        database_id=self.episode_database_id,
-                        filter={"property": "日期", "date": {"on_or_after": "2025-01-01"}},
-                        page_size=3,
-                    )
-                    results = resp.get("results", [])
-                    print(f"DEBUG: 2025+ count (page1) = {len(results)}, has_more={resp.get('has_more')}")
-                    for i, p in enumerate(results):
-                        pp = p.get("properties", {})
-                        dt = pp.get("日期", {}).get("date")
-                        dur = pp.get("时长", {})
-                        print(f"DEBUG [{i}]: 日期={dt}, 时长={dur.get('number')}")
-                except Exception as e:
-                    print(f"DEBUG error: {e}")
+                print(f"WARN: failed to resolve data source id: {e}")
     @retry(stop_max_attempt_number=3, wait_fixed=5000)
     def update_database(self,database_id):
         """更新数据库"""
